@@ -1,0 +1,130 @@
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-resizable-behavior/iron-resizable-behavior.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<!--
+`view-geospatial`
+@demo demo/view-geospatial.html 
+-->
+<dom-module id="view-geospatial">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+    :host {
+        display: block;
+        position: relative;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        height: 100%;
+    }
+    
+    :host paper-input {
+        margin: 0 8px;
+        width: 120px;
+    }
+    
+    :host #chart {
+        width: 100%;
+        height: 400px;
+    }
+    </style>
+    <template>
+        <div class="layout horizontal center wrap">
+            <div class="flex-auto"></div>
+            <paper-input label="Refresh Time" type="number" min="5" max="30" value="{{refreshTime}}"></paper-input>
+        </div>
+        <div id="chart"></div>
+    </template>
+    <script>
+    Polymer({
+
+        is: 'view-geospatial',
+
+        properties: {
+            activePage: {
+                type: Boolean,
+                observer: '_activePageChanged'
+            },
+            refreshTime: {
+                type: Number,
+                value: 5
+            }
+        },
+
+        behaviors: [
+            Polymer.IronResizableBehavior
+        ],
+
+        listeners: {
+            'iron-resize': '_onIronResize'
+        },
+
+        _onIronResize: function() {
+            if (this.data)
+                this._drawChart();
+        },
+
+        _activePageChanged: function(newValue, oldValue) {
+            if (newValue) {
+                if (!this.apiLoaded) {
+                    google.charts.setOnLoadCallback(function() {
+                        this.apiLoaded = true;
+                        this._loadData();
+                    }.bind(this));
+                } else
+                    this._loadData();
+            } else {
+                clearTimeout(this.timer);
+            }
+        },
+
+        ready: function() {
+            this.reloadCount = 0;
+            google.charts.load('current', {
+                'mapsApiKey': '',
+                'packages': ['geochart']
+            });
+            google.charts.setOnLoadCallback(function() {
+                this.apiLoaded = true;
+            }.bind(this));
+        },
+
+        _loadData: function() {
+            var file = ['geo_', this.reloadCount % 5, '.csv'].join('');
+            fetch(file).then(function(response) {
+                response.text().then(function(data) {
+                    this._parseData(data);
+                }.bind(this));
+            }.bind(this));
+        },
+
+        _parseData: function(data) {
+            var rows = data.split('\n');
+            var data = [];
+            rows.forEach(function(item, idx) {
+                var temp = item.split(',');
+                if (idx > 0)
+                    temp[1] = parseInt(temp[1], 10);
+                data.push(temp);
+            });
+
+            this.set('data', data);
+            this._drawChart();
+
+            this.timer = setTimeout(function() {
+                this.reloadCount += 1;
+                this._loadData();
+            }.bind(this), this.refreshTime * 1000);
+        },
+
+        _drawChart: function() {
+            var data = google.visualization.arrayToDataTable(this.data);
+            var options = {
+                region: 'TW',
+                displayMode: 'markers'
+            };
+            var chart = new google.visualization.GeoChart(this.$.chart);
+            chart.draw(data, options);
+        }
+    });
+    </script>
+</dom-module>

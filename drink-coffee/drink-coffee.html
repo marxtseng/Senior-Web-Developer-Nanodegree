@@ -1,0 +1,162 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icons/maps-icons.html">
+<link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="../paper-tabs/paper-tab.html">
+<link rel="import" href="../paper-toolbar/paper-toolbar.html">
+<link rel="import" href="../polymerfire/firebase-app.html">
+<link rel="import" href="../polymerfire/firebase-auth.html">
+<link rel="import" href="coffee-nearby.html">
+<link rel="import" href="coffee-favorite.html">
+<link rel="import" href="coffee-receipt.html">
+<!--
+`drink-coffee`
+@demo demo/drink-coffee.html 
+-->
+<dom-module id="drink-coffee">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+        :host {
+            display: block;
+            position: relative;
+            box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            height: 100%;
+            background: #f2f2f2;
+            --primary-color: var(--paper-brown-700);
+            --default-primary-color: var(--paper-brown-700);
+            --light-primary-color: var(--paper-brown-300);
+            --dark-primary-color: var(--paper-brown-900);
+        }
+        
+        :host .drink-coffee-title {
+            font-size: 40px;
+            font-weight: 400;
+            margin-bottom: 32px;
+        }
+        
+        :host .drink-coffee-title iron-icon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 8px;
+        }
+        
+        :host .paper-header {
+            background: var(--primary-color);
+        }
+        
+        :host paper-button.google {
+            color: #fff;
+            background: #F44336;
+            margin: 0.29em;
+        }
+        
+        :host paper-button.facebook {
+            color: #fff;
+            background: #3F51B5;
+            margin: 0.29em;
+        }
+        
+        :host paper-button.twitter {
+            color: #fff;
+            background: #03A9F4;
+            margin: 0.29em;
+        }
+        
+        :host paper-tab {
+            padding: 0 5px;
+        }
+    </style>
+    <template>
+        <paper-header-panel mode="waterfall">
+            <header class="paper-header" hidden$="{{!user}}">
+                <paper-toolbar>
+                    <iron-icon icon="maps:local-cafe"></iron-icon>
+                    <div class="title" style="margin:0 0 0 8px">Drink Coffee</div>
+                    <paper-tabs selected="{{page}}" attr-for-selected="value" no-bar>
+                        <paper-tab value="nearby">
+                            <iron-icon icon="maps:near-me"></iron-icon>
+                        </paper-tab>
+                        <paper-tab value="favorite">
+                            <iron-icon icon="icons:favorite"></iron-icon>
+                        </paper-tab>
+                        <paper-tab value="receipt">
+                            <iron-icon icon="icons:receipt"></iron-icon>
+                        </paper-tab>
+                    </paper-tabs>
+                    <paper-icon-button icon="icons:input" on-tap="_signOut" aria-label="sign out"></paper-icon-button>
+                </paper-toolbar>
+            </header>
+            <main>
+                <iron-pages class="fit" selected="{{page}}" attr-for-selected="value">
+                    <div class="fit layout vertical center-center" style="background:#fff" value="login">
+                        <div class="drink-coffee-title layout vertical center">
+                            <iron-icon icon="maps:local-cafe"></iron-icon>
+                            <div>Drink Coffee</div>
+                        </div>
+                        <div class="layout vertical" style="width:260px;margin-top:16px">
+                            <paper-button class="flex-auto google" on-tap="_signInProvider" provider="google">google</paper-button>
+                            <paper-button class="flex-auto facebook" on-tap="_signInProvider" provider="facebook">facebook</paper-button>
+                            <paper-button class="flex-auto twitter" on-tap="_signInProvider" provider="twitter">twitter</paper-button>
+                        </div>
+                    </div>
+                    <coffee-nearby app="{{app}}" user="{{user}}" value="nearby"></coffee-nearby>
+                    <coffee-favorite app="{{app}}" user="{{user}}" value="favorite"></coffee-favorite>
+                    <coffee-receipt app="{{app}}" user="{{user}}" value="receipt"></coffee-receipt>
+                </iron-pages>
+            </main>
+        </paper-header-panel>
+        <firebase-app app="{{app}}" auth-domain="" database-url="" api-key=""></firebase-app>
+        <firebase-auth id="auth" user="{{user}}"></firebase-auth>
+    </template>
+    <script>
+        Polymer({
+
+            is: 'drink-coffee',
+
+            properties: {
+                page: {
+                    type: String,
+                    value: 'login'
+                },
+                app: Object,
+                user: {
+                    type: Object,
+                    observer: '_userChanged'
+                }
+            },
+
+            _userChanged: function(newValue, oldValue) {
+                if (newValue)
+                    this.set('page', 'nearby');
+            },
+
+            ready: function() {},
+
+            _signInProvider: function(e) {
+                this.$.auth.provider = e.target.getAttribute('provider');
+                this.$.auth.signInWithPopup()
+                    .then(function(response) {
+                        this.set('page', 'nearby')
+                    }.bind(this));
+            },
+
+            _signOut: function() {
+                if (window.navigator.onLine) {
+                    this.$.auth.signOut()
+                        .then(function(response) {
+                            this.set('page', 'login');
+                        }.bind(this))
+                        .catch(function(error) {
+                            alert(error);
+                        }.bind(this));
+                }
+            }
+        });
+    </script>
+</dom-module>

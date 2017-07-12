@@ -1,0 +1,106 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-resizable-behavior/iron-resizable-behavior.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../paper-material/paper-material.html">
+<link rel="import" href="../paper-tabs/paper-tab.html">
+<link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="../paper-toolbar/paper-toolbar.html">
+<link rel="import" href="view-geospatial.html">
+<link rel="import" href="view-metrics.html">
+<link rel="import" href="view-issues.html">
+<!--
+`corporate-dashboard`
+@demo demo/corporate-dashboard.html 
+-->
+<dom-module id="corporate-dashboard">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+    :host {
+        display: block;
+        position: relative;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        height: 100%;
+        background: #f2f2f2;
+        --primary-color: var(--paper-purple-700);
+        --default-primary-color: var(--paper-purple-700);
+        --light-primary-color: var(--paper-purple-300);
+        --dark-primary-color: var(--paper-purple-900);
+    }
+    
+    :host header {
+        min-height: 64px;
+        padding: 0 16px;
+        background: var(--primary-color);
+    }
+    
+    :host header .title {
+        margin: 0;
+        line-height: 2em;
+        color: #fff;
+        font-weight: normal;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    :host paper-tab {
+        color: #fff;
+    }
+    </style>
+    <template>
+        <div class="layout vertical fit">
+            <header>
+                <div class="header layout horizontal center wrap" style="padding:4px;max-width:1024px;margin:0 auto">
+                    <h1 class="title flex-auto">{{current}} Dashboard</h1>
+                    <paper-tabs selected="{{current}}" attr-for-selected="value" no-bar>
+                        <paper-tab value="Geospatial">Geospatial</paper-tab>
+                        <paper-tab value="Metrics">Metrics</paper-tab>
+                        <paper-tab value="Issues">Issues</paper-tab>
+                    </paper-tabs>
+                </div>
+            </header>
+            <main class="flex">
+                <paper-header-panel mode="waterfall">
+                    <div class="layout vertical" style="padding:8px;max-width:1024px;margin:8px auto">
+                        <paper-material elevation="1" style="padding:8px;background:#fff">
+                            <iron-pages selected="{{current}}" attr-for-selected="page">
+                                <view-geospatial id="geospatial" class="flex-auto" page="Geospatial"></view-geospatial>
+                                <view-metrics id="metrics" class="flex-auto" page="Metrics"></view-metrics>
+                                <view-issues id="issues" class="flex-auto" page="Issues"></view-issues>
+                            </iron-pages>
+                        </paper-material>
+                    </div>
+                </paper-header-panel>
+            </main>
+        </div>
+    </template>
+    <script>
+    Polymer({
+
+        is: 'corporate-dashboard',
+
+        properties: {
+            current: {
+                type: Object,
+                value: 'Geospatial',
+                observer: '_currentChanged'
+            }
+        },
+
+        behaviors: [
+            Polymer.IronResizableBehavior
+        ],
+
+        _currentChanged: function(newValue, oldValue) {
+            if (oldValue)
+                this.$$(['#', oldValue.toLowerCase()].join('')).activePage = false;
+            if (newValue)
+                this.$$(['#', newValue.toLowerCase()].join('')).activePage = true;
+        }
+    });
+    </script>
+</dom-module>

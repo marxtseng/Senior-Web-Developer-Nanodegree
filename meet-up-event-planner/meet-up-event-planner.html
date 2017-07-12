@@ -1,0 +1,669 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icons/maps-icons.html">
+<link rel="import" href="../iron-icons/social-icons.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="../paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../paper-fab/paper-fab.html">
+<link rel="import" href="../paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../paper-input/paper-textarea.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../paper-material/paper-material.html">
+<link rel="import" href="../paper-menu/paper-menu.html">
+<link rel="import" href="../paper-toolbar/paper-toolbar.html">
+<link rel="import" href="../moment-element/moment-with-locales-import.html">
+<link rel="import" href="../polymerfire/firebase-app.html">
+<link rel="import" href="../polymerfire/firebase-auth.html">
+<link rel="import" href="../polymerfire/firebase-document.html">
+<link rel="import" href="../polymerfire/firebase-query.html">
+<link rel="import" href="../google-map/google-map.html">
+<link rel="import" href="../google-map/google-map-marker.html">
+<link rel="import" href="../google-map/google-map-search.html">
+<!--
+`meet-up-event-planner`
+@demo demo/index.html
+-->
+<dom-module id="meet-up-event-planner">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+    :host {
+        display: block;
+        position: relative;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        height: 100%;
+        background: #f2f2f2;
+        --primary-color: var(--paper-blue-700);
+        --default-primary-color: var(--paper-blue-700);
+        --light-primary-color: var(--paper-blue-300);
+        --dark-primary-color: var(--paper-blue-900);
+    }
+    
+    :host paper-toolbar paper-input {
+        --paper-input-container-color: #eee;
+        --paper-input-container-focus-color: #fff;
+        --paper-input-container-input-color: #fff;
+    }
+    
+    :host paper-fab {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 1;
+    }
+    
+    :host .secondary-text-color {
+        color: var(--secondary-text-color);
+    }
+    
+    .event-card {
+        color: #212121;
+        background: #fff;
+        flex: 1 1 240px;
+        margin: 4px;
+    }
+    
+    @media (max-width: 600px) {
+        .user-title {
+            display: none;
+        }
+        .cell-item {
+            flex: 1 1 auto;
+        }
+    }
+    
+    @media (min-width: 601px) {
+        .cell-item {
+            flex: 1 1 160px;
+            margin: 0 6px;
+        }
+    }
+    </style>
+    <template>
+        <template is="dom-if" if="{{status.login}}">
+            <div class="layout vertical center-center fit" style="background:#fff">
+                <div style="font-size:1.4em;font-weight:400;margin-bottom:2em">Meet-Up Event Planner</div>
+                <div class="layout vertical" style="width:260px">
+                    <paper-input value="{{login.email}}" no-label-float type="email" auto-validate error-message="Email validation fail!" required style="height:52px">
+                        <div style="margin-right:4px" prefix>Email：</div>
+                    </paper-input>
+                    <paper-input value="{{login.password}}" no-label-float type="password" style="height:52px">
+                        <div style="margin-right:4px" prefix>Password：</div>
+                    </paper-input>
+                    <div class="layout horizontal start" style="margin-top:8px">
+                        <paper-button style="text-transform:initial;margin:0;padding:2px 4px;min-width:60px;font-size:14px;color:#01579B" on-tap="_registerAccount" register>Register</paper-button>
+                        <div class="flex-auto"></div>
+                        <paper-button style="text-transform:initial;padding:9px 12px;color:#fff;background:#333" on-tap="_signInEmail" signin>SignIn</paper-button>
+                    </div>
+                    <div style="color:#dd2c00;padding:8px">{{error.message}}</div>
+                </div>
+                <div class="layout vertical" style="width:260px;margin-top:16px">
+                    <paper-button class="flex-auto" style="color:#fff;background:#F44336;margin:0.29em" on-tap="_signInProvider" provider="google">google</paper-button>
+                    <paper-button class="flex-auto" style="color:#fff;background:#3F51B5;margin:0.29em" on-tap="_signInProvider" provider="facebook">facebook</paper-button>
+                    <paper-button class="flex-auto" style="color:#fff;background:#03A9F4;margin:0.29em" on-tap="_signInProvider" provider="twitter">twitter</paper-button>
+                    <paper-button class="flex-auto" style="color:#333;background:#ffffff;margin:0.29em;border:1px solid #ccc" on-tap="_signInProvider" provider="github">github</paper-button>
+                </div>
+            </div>
+        </template>
+        <template is="dom-if" if="{{status.register}}">
+            <div class="layout vertical center-center fit" style="background:#fff">
+                <div style="font-size:1.4em;font-weight:400;margin-bottom:2em">Meet-Up Event Planner</div>
+                <div class="layout vertical" style="width:260px">
+                    <paper-input value="{{reg.name}}" no-label-float auto-validate error-message="Name required!" required style="height:52px">
+                        <div style="margin-right:4px" prefix>Name：</div>
+                    </paper-input>
+                    <paper-input value="{{reg.email}}" no-label-float type="email" auto-validate error-message="Email validation fail!" required style="height:52px">
+                        <div style="margin-right:4px" prefix>Email：</div>
+                    </paper-input>
+                    <paper-input value="{{reg.password}}" no-label-float type="password" auto-validate error-message="6 character required!" required minlength="6" char-counter>
+                        <div style="margin-right:4px" prefix>Password：</div>
+                    </paper-input>
+                    <paper-input value="{{reg.confirm}}" no-label-float type="password" auto-validate error-message="6 character required!" required minlength="6" char-counter>
+                        <div style="margin-right:4px" prefix>Confirm：</div>
+                    </paper-input>
+                    <div class="layout horizontal start" style="margin-top:8px">
+                        <paper-button style="text-transform:initial;margin:0;padding:2px 4px;min-width:60px;font-size:14px;color:#01579B" on-tap="_cancelRegister">Cancel</paper-button>
+                        <div class="flex-auto"></div>
+                        <paper-button style="text-transform:initial;padding:9px 12px;color:#fff;background:#333" on-tap="_createUser" create>Register</paper-button>
+                    </div>
+                    <div style="color:#dd2c00;padding:8px">{{error.message}}</div>
+                </div>
+            </div>
+        </template>
+        <template is="dom-if" if="{{status.event}}">
+            <paper-header-panel mode="standard">
+                <paper-toolbar>
+                    <div class="layout horizontal center flex-auto" style="max-width:992px;margin:0 auto">
+                        <paper-input value="{{filterString::input}}">
+                            <iron-icon icon="icons:search" prefix></iron-icon>
+                        </paper-input>
+                        <div class="flex-auto"></div>
+                        <paper-button class="layout horizontal center" style="text-transform:inherit;padding:4px;min-width:40px;margin-right:8px" on-tap="_openInfoDialog">
+                            <img src$="{{user.photoURL}}" style="width:32px;height:32px;border-radius:16px" hidden$="{{!user.photoURL}}" />
+                            <img src="data:image/gif;base64,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" style="width:32px;height:32px;border-radius:16px" hidden$="{{user.photoURL}}" />
+                            <div class="user-title" style="margin-left:8px">{{userTitle}}</div>
+                        </paper-button>
+                        <paper-icon-button icon="icons:input" on-tap="_signOut" signout></paper-icon-button>
+                    </div>
+                </paper-toolbar>
+                <div class="layout vertical">
+                    <paper-fab icon="icons:add" on-tap="_openEventDialog" addevent></paper-fab>
+                    <div class="layout horizontal start-justified wrap" style="max-width:1024px;margin:0 auto;padding:8px">
+                        <template is="dom-repeat" items="{{events}}" as="event" filter="{{_filter(filterString)}}">
+                            <paper-material class="layout vertical event-card" elevation="1">
+                                <div class="layout horizontal center">
+                                    <div class="flex"></div>
+                                    <paper-icon-button class="secondary-text-color" icon="icons:create" on-tap="_openEditDialog"></paper-icon-button>
+                                    <paper-icon-button class="secondary-text-color" icon="icons:delete" on-tap="_openRemoveDialog" delete></paper-icon-button>
+                                </div>
+                                <div style="padding:16px">
+                                    <div style="font-size:24px">{{event.name}}</div>
+                                    <div class="layout vertical" style="margin-top:16px">
+                                        <div>{{event.type}}</div>
+                                        <div>{{event.host}}</div>
+                                    </div>
+                                    <div class="layout horizontal" style="margin-top:16px">
+                                        <iron-icon icon="icons:event" style="min-width:24px"></iron-icon>
+                                        <div class="flex-auto" style="margin-left:8px">
+                                            <div>{{_dateTimeFormat(event.startTime)}}</div>
+                                            <div>{{_dateTimeFormat(event.endTime)}}</div>
+                                        </div>
+                                    </div>
+                                    <div class="layout horizontal" style="margin-top:4px">
+                                        <iron-icon icon="maps:place" style="min-width:24px"></iron-icon>
+                                        <a href="https://www.google.com/maps/place/{{event.location}}" target="_blank" style="margin-left:8px" hidden$="{{!event.location}}">{{event.location}}</a>
+                                    </div>
+                                    <div class="layout horizontal" style="margin-top:4px">
+                                        <iron-icon icon="social:group" style="min-width:24px"></iron-icon>
+                                        <div class="flex-auto" style="margin-left:8px">{{event.guest}}</div>
+                                    </div>
+                                    <div class="flex-auto secondary-text-color" style="margin-top:16px" hidden$="{{!event.message}}">{{event.message}}</div>
+                                </div>
+                            </paper-material>
+                        </template>
+                        <div class="event-card" style="visibility:hidden"></div>
+                        <div class="event-card" style="visibility:hidden"></div>
+                        <div class="event-card" style="visibility:hidden"></div>
+                    </div>
+                </div>
+            </paper-header-panel>
+        </template>
+        <paper-dialog modal id="infoDialog" on-iron-overlay-closed="_dismissInfoDialog">
+            <paper-dialog-scrollable>
+                <paper-input class="flex-auto" label="Name" value="{{info.name}}" autofocus auto-validate error-message="Name required!" required></paper-input>
+                <paper-dropdown-menu class="flex-auto" label="Gender">
+                    <paper-menu class="dropdown-content" selected="{{info.gender}}" attr-for-selected="value">
+                        <paper-item value="female">Female</paper-item>
+                        <paper-item value="male">Male</paper-item>
+                        <paper-item value="other">Other</paper-item>
+                    </paper-menu>
+                </paper-dropdown-menu>
+                <paper-input class="flex-auto" label="Birthday" value="{{info.birthday}}" type="date"></paper-input>
+                <paper-input class="flex-auto" label="Organization" value="{{info.organization}}"></paper-input>
+                <paper-input class="flex-auto" label="Employer" value="{{info.employer}}"></paper-input>
+                <paper-input class="flex-auto" label="Job Title" value="{{info.jobTitle}}"></paper-input>
+            </paper-dialog-scrollable>
+            <div class="buttons">
+                <paper-button dialog-dismiss>Cancel</paper-button>
+                <paper-button dialog-confirm>Submit</paper-button>
+            </div>
+        </paper-dialog>
+        <paper-dialog modal id="eventDialog" on-iron-overlay-closed="_dismissEventDialog">
+            <paper-dialog-scrollable>
+                <div class="layout vertical" style="max-width:480px">
+                    <paper-input class="flex-auto" label="Name" value="{{event.name}}" autofocus auto-validate error-message="Name required!" required style="padding:0 4px"></paper-input>
+                    <div class="layout horizontal center wrap flex-auto">
+                        <paper-dropdown-menu label="Type" style="padding:0 4px;flex:1 1 180px">
+                            <paper-menu class="dropdown-content" selected="{{event.type}}" attr-for-selected="value">
+                                <paper-item value="Birthday Party">Birthday Party</paper-item>
+                                <paper-item value="Conference Talk">Conference Talk</paper-item>
+                                <paper-item value="Wedding">Wedding</paper-item>
+                            </paper-menu>
+                        </paper-dropdown-menu>
+                        <paper-dropdown-menu label="Host" style="padding:0 4px;flex:1 1 180px">
+                            <paper-menu class="dropdown-content" selected="{{event.host}}" attr-for-selected="value">
+                                <paper-item value$="{{info.name}}" hidden$="{{!info.name}}">{{info.name}}</paper-item>
+                                <paper-item value$="{{info.organization}}" hidden$="{{!info.organization}}">{{info.organization}}</paper-item>
+                            </paper-menu>
+                        </paper-dropdown-menu>
+                    </div>
+                    <div class="layout horizontal center wrap flex-auto">
+                        <paper-input label="Start Time" value="{{event.startTime}}" style="padding:0 4px;flex:1 1 180px" type="datetime-local" auto-validate error-message="Time required!" required></paper-input>
+                        <paper-input label="End Time" value="{{event.endTime}}" style="padding:0 4px;flex:1 1 180px" type="datetime-local" auto-validate error-message="Time required!" required></paper-input>
+                    </div>
+                    <div id="validateMessage" style="padding:0 4px;color:#dd2c00;max-width:400px"></div>
+                    <paper-input class="flex-auto" label="Guest" value="{{event.guest}}" style="padding:0 4px" auto-validate error-message="Guest required!" required></paper-input>
+                    <paper-input id="location" class="flex-auto" label="Location" value="{{event.location}}" style="padding:0 4px" auto-validate error-message="Location required!" required>
+                        <paper-icon-button icon="icons:open-in-new" on-tap="_openMap" suffix disabled$="{{!event.location}}"></paper-icon-button>
+                    </paper-input>
+                    <paper-textarea class="flex-auto" label="Message" value="{{event.message}}" style="padding:0 4px" char-counter></paper-textarea>
+                </div>
+            </paper-dialog-scrollable>
+            <div class="buttons">
+                <paper-button dialog-dismiss>Cancel</paper-button>
+                <paper-button dialog-confirm disabled$="{{!eventValidate}}" eventSubmit>Submit</paper-button>
+            </div>
+        </paper-dialog>
+        <paper-dialog modal id="removeDialog" on-iron-overlay-closed="_dismissRemoveDialog">
+            <paper-dialog-scrollable>
+                <h3>Remove "{{event.name}}" ?</h3>
+                <div style="font-size:24px;padding:16px">{{event.name}}</div>
+                <div class="flex-auto" style="padding:16px">
+                    <div class="layout horizontal" style="margin:4px 0">
+                        <iron-icon icon="icons:event" style="min-width:24px"></iron-icon>
+                        <div class="flex-auto" style="margin-left:8px">
+                            <div>{{_dateTimeFormat(event.startTime)}}</div>
+                            <div>{{_dateTimeFormat(event.endTime)}}</div>
+                        </div>
+                    </div>
+                    <div class="layout horizontal center" style="margin:4px 0">
+                        <iron-icon icon="maps:place" style="min-width:24px"></iron-icon>
+                        <a href$="https://www.google.com/maps/place/{{event.location}}" target="_blank" style="margin-left:8px" hidden$="{{!event.location}}">{{event.location}}</a>
+                    </div>
+                    <div class="layout horizontal center" style="margin:4px 0">
+                        <iron-icon icon="icons:supervisor-account" style="min-width:24px"></iron-icon>
+                        <div class="flex-auto" style="margin-left:8px">{{event.guest}}</div>
+                    </div>
+                    <div class="secondary-text-color" style="margin-top:16px;max-width:320px">{{event.message}}</div>
+                </div>
+            </paper-dialog-scrollable>
+            <div class="buttons">
+                <paper-button dialog-dismiss>Cancel</paper-button>
+                <paper-button dialog-confirm removeSubmit>Submit</paper-button>
+            </div>
+        </paper-dialog>
+        <firebase-app auth-domain="" database-url="" api-key=""></firebase-app>
+        <firebase-auth id="auth" user="{{user}}"></firebase-auth>
+        <firebase-document id="info"></firebase-document>
+        <firebase-query id="query" path="/users/{{user.uid}}/events" data="{{events}}"></firebase-query>
+        <google-map-search map="{{map}}" query="{{currentPosition}}" results="{{results}}" global-search></google-map-search>
+        <google-map id="map" class="flex-auto" map="{{map}}" api-key="" style="display:none"></google-map>
+    </template>
+    <script>
+    Polymer({
+
+        is: 'meet-up-event-planner',
+
+        properties: {
+            reg: {
+                type: Object,
+                value: {
+                    name: '',
+                    email: '',
+                    password: '',
+                    confirm: ''
+                }
+            },
+            login: {
+                type: Object,
+                value: {
+                    email: '',
+                    password: ''
+                }
+            },
+            user: {
+                type: Object,
+                observer: '_userChanged'
+            },
+            results: {
+                type: Array,
+                observer: '_resultsChanged'
+            },
+            events: Array,
+            status: {
+                type: Object,
+                value: {
+                    login: true,
+                    register: false,
+                    event: false
+                }
+            },
+            eventValidate: {
+                type: Boolean,
+                value: false
+            },
+            currentPosition: {
+                type: Object,
+                value: {
+                    latitude: 0,
+                    longitude: 0
+                }
+            }
+        },
+
+        observers: [
+            '_eventValidator(event.*)'
+        ],
+
+        _userChanged: function(newValue, oldValue) {
+            if (newValue)
+                window.localStorage.setItem('user', JSON.stringify(newValue));
+        },
+
+        _resultsChanged: function(newValue, oldValue) {
+            if (newValue.length > 0 && this.event && !this.event.$key)
+                this.set('event.location', newValue[0].formatted_address);
+        },
+
+        _dateTimeFormat: function(e) {
+            return moment(e).format('YYYY-MM-DD HH:mm');
+        },
+
+        ready: function() {
+            var user = window.localStorage.getItem('user');
+            if (user) {
+                this.set('user', JSON.parse(user));
+                this.$.info.getStoredValue(['/users/', this.user.uid, '/info'].join(''))
+                    .then(function(data) {
+                        this.set('info', JSON.parse(JSON.stringify(data)));
+                        this.set('userTitle', this.info.name);
+
+                        this.set('status', {
+                            login: false,
+                            register: false,
+                            event: true
+                        });
+                    }.bind(this));
+            } else {
+                this.set('status', {
+                    login: true,
+                    register: false,
+                    event: false
+                });
+            }
+        },
+
+        _filter: function(value) {
+            if (!value)
+                return null;
+            else {
+                value = value.toLowerCase();
+                return function(item) {
+                    return ((item.name || '').toLowerCase().indexOf(value) !== -1 ||
+                        (item.location || '').toLowerCase().indexOf(value) !== -1 ||
+                        (item.guest || '').toLowerCase().indexOf(value) !== -1 ||
+                        (item.message || '').toLowerCase().indexOf(value) !== -1 ||
+                        (item.startTime || '').toLowerCase().indexOf(value) !== -1 ||
+                        (item.endTime || '').toLowerCase().indexOf(value) !== -1 ||
+                        (item.type || '').toLowerCase().indexOf(value) !== -1 ||
+                        (item.host || '').toLowerCase().indexOf(value) !== -1);
+                };
+            }
+        },
+
+        _registerAccount: function() {
+            this.set('reg', {});
+            this.set('error', null);
+
+            this.set('status', {
+                login: false,
+                register: true,
+                event: false
+            });
+        },
+
+        _cancelRegister: function() {
+            this.set('login', {});
+            this.set('error', null);
+
+            this.set('status', {
+                login: true,
+                register: false,
+                event: false
+            });
+        },
+
+        _createUser: function() {
+            this.set('error', null);
+
+            if (!this.reg.name) {
+                this.set('error', {
+                    message: 'Name is required!'
+                });
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/.test(this.reg.email)) {
+                this.set('error', {
+                    message: 'Email validation fail!'
+                });
+                return;
+            }
+
+            if (!this.reg.password) {
+                this.set('error', {
+                    message: 'Password is required!'
+                });
+                return;
+            }
+
+
+            if (this.reg.password !== this.reg.confirm) {
+                this.set('error', {
+                    message: 'Password mismatch!'
+                });
+                return;
+            }
+
+            this.$.auth.createUserWithEmailAndPassword(this.reg.email, this.reg.password)
+                .then(function(response) {
+                    this.set('status', {
+                        login: false,
+                        register: false,
+                        event: true
+                    });
+
+                    this.set('info', {
+                        name: this.reg.name,
+                        timestamp: Date.now()
+                    });
+                    this.set('userTitle', this.info.name);
+
+                    this.$.info.setStoredValue(['/users/', response.uid, '/info'].join(''), this.info);
+                }.bind(this))
+                .catch(function(error) {
+                    this.set('error', error);
+                }.bind(this));
+        },
+
+        _signInEmail: function() {
+            this.set('error', null);
+
+            if (!this.login.email || !this.login.password) return;
+
+            this.$.auth.signInWithEmailAndPassword(this.login.email, this.login.password)
+                .then(function(response) {
+                    this.set('status', {
+                        login: false,
+                        register: false,
+                        event: true
+                    });
+
+                    this.$.info.getStoredValue(['/users/', response.uid, '/info'].join(''))
+                        .then(function(data) {
+                            this.set('info', JSON.parse(JSON.stringify(data)));
+                            this.set('userTitle', this.info.name);
+                        }.bind(this));
+                }.bind(this))
+                .catch(function(error) {
+                    this.set('error', error);
+                }.bind(this));
+        },
+
+        _signInProvider: function(e) {
+            this.set('error', null);
+
+            this.$.auth.provider = e.target.getAttribute('provider');
+            this.$.auth.signInWithPopup()
+                .then(function(response) {
+                    this.set('status', {
+                        login: false,
+                        register: false,
+                        event: true
+                    });
+
+                    this.$.info.getStoredValue(['/users/', response.user.uid, '/info'].join(''))
+                        .then(function(data) {
+                            if (!data.timestamp) {
+                                this.set('info', {
+                                    name: response.user.displayName || response.user.email,
+                                    timestamp: Date.now()
+                                });
+                                this.set('userTitle', this.info.name);
+
+                                this.$.info.setStoredValue(['/users/', response.user.uid, '/info'].join(''), this.info);
+                            } else {
+                                this.set('info', JSON.parse(JSON.stringify(data)));
+                                this.set('userTitle', this.info.name);
+                            }
+                        }.bind(this));
+                }.bind(this))
+                .catch(function(error) {
+                    this.set('error', error);
+                }.bind(this));
+        },
+
+        _signOut: function() {
+            this.set('login', {});
+            this.set('error', null);
+
+            this.$.auth.signOut()
+                .then(function(response) {
+                    this.set('status', {
+                        login: true,
+                        register: false,
+                        event: false
+                    });
+                }.bind(this))
+                .catch(function(error) {
+                    console.log(error);
+                }.bind(this));
+
+            window.localStorage.removeItem('user');
+        },
+
+        _openInfoDialog: function(e) {
+            this.info.origin = JSON.parse(JSON.stringify(this.info));
+            this.$.infoDialog.open();
+        },
+
+        _dismissInfoDialog: function(e) {
+            if (e.target.nodeName !== 'PAPER-DIALOG') return;
+            if (!this.info.name) return;
+
+            if (e.detail.confirmed) {
+                this.info.timestamp = Date.now();
+                delete this.info.origin;
+                this.$.info.setStoredValue(['/users/', this.user.uid, '/info'].join(''), this.info);
+                this.set('userTitle', this.info.name);
+            } else
+                this.set('info', this.info.origin);
+        },
+
+        _openEventDialog: function(e) {
+            this.set('event', {
+                type: 'Conference Talk',
+                host: this.info.name,
+                startTime: moment().add(moment.duration(1, 'h')).format('YYYY-MM-DDTHH:mm'),
+                endTime: moment().add(moment.duration(2, 'h')).format('YYYY-MM-DDTHH:mm')
+            });
+            this.$.location.placeholder = 'Locating ......';
+
+            window.navigator.geolocation.getCurrentPosition(function(e) {
+                this.set('currentPosition', [e.coords.latitude, e.coords.longitude].join(','));
+            }.bind(this));
+
+            this.$.eventDialog.open();
+        },
+
+        _eventValidator: function() {
+            this.$.validateMessage.style.display = 'none';
+
+            var valitate = this.event ? !(!this.event.name ||
+                !this.event.type ||
+                !this.event.host ||
+                !this.event.startTime ||
+                !this.event.endTime ||
+                !this.event.guest ||
+                !this.event.location) : false;
+
+            var start = moment(this.event.startTime);
+            var end = moment(this.event.endTime);
+
+            if (start >= end && start <= moment()) {
+                valitate = false;
+                this.$.validateMessage.style.display = 'flex';
+                this.$.validateMessage.innerHTML = ["1.Events shouldn't start in the past.", "2.Event End time shouldn't take place before or at the same time as Event Start time."].join('<br/>');
+            } else if (start <= moment()) {
+                valitate = false;
+                this.$.validateMessage.style.display = 'flex';
+                this.$.validateMessage.innerHTML = "Events shouldn't start in the past.";
+            } else if (start >= end) {
+                valitate = false;
+                this.$.validateMessage.style.display = 'flex';
+                this.$.validateMessage.innerHTML = "Event End time shouldn't take place before or at the same time as Event Start time.";
+            }
+
+            this.set('eventValidate', valitate);
+        },
+
+        _dismissEventDialog: function(e) {
+            if (e.target.nodeName !== 'PAPER-DIALOG') return;
+            if (!this.eventValidate) return;
+
+            if (e.detail.confirmed) {
+                this.event.timestamp = Date.now();
+                var event = document.createElement('firebase-document');
+                event.data = {
+                    name: this.event.name,
+                    type: this.event.type,
+                    host: this.event.host,
+                    startTime: this.event.startTime,
+                    endTime: this.event.endTime,
+                    guest: this.event.guest,
+                    location: this.event.location,
+                    message: this.event.message || '',
+                    timestamp: this.event.timestamp
+                };
+
+                if (this.event.$key) {
+                    event.save(['/users/', this.user.uid, '/events'].join(''), this.event.$key)
+                        .then(function(rsp) {
+                            this.set(['events.', this.event.idx], this.event);
+                        }.bind(this));
+                } else
+                    event.save(['/users/', this.user.uid, '/events'].join(''));
+            }
+        },
+
+        _openEditDialog: function(e) {
+            this.set('event', JSON.parse(JSON.stringify(e.model.event)));
+            this.set('event.idx', e.model.index);
+            this.set('currentPosition', this.event.location);
+            this.$.eventDialog.open();
+        },
+
+        _openRemoveDialog: function(e) {
+            this.set('event', JSON.parse(JSON.stringify(e.model.event)));
+            this.set('event.idx', e.model.index);
+            this.$.removeDialog.open();
+        },
+
+        _dismissRemoveDialog: function(e) {
+            if (e.detail.confirmed) {
+                var event = document.createElement('firebase-document');
+                event.setStoredValue(['/users/', this.user.uid, '/events/', this.event.$key].join(''), null);
+            }
+        },
+
+        _openMap: function(e) {
+            window.open(['https://www.google.com/maps/place/', this.event.location].join(''), '_blank');
+        }
+    });
+    </script>
+</dom-module>

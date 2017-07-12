@@ -1,0 +1,323 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icons/device-icons.html">
+<link rel="import" href="../iron-icons/maps-icons.html">
+<link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="../paper-fab/paper-fab.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../paper-item/paper-item-body.html">
+<link rel="import" href="../paper-spinner/paper-spinner.html">
+<link rel="import" href="../google-map/google-map.html">
+<link rel="import" href="../polymerfire/firebase-query.html">
+<link rel="import" href="../polymerfire/firebase-document.html">
+<!--
+`coffee-nearby`
+@demo demo/coffee-nearby.html 
+-->
+<dom-module id="coffee-nearby">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+        :host {
+            display: block;
+            position: relative;
+            box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            height: 100%;
+        }
+        
+        :host paper-item {
+            border-top: 1px solid #eee;
+        }
+        
+        :host paper-fab {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 1;
+        }
+        
+        :host iron-icon.offline {
+            width: 80px;
+            height: 80px;
+            color: var(--paper-blue-500);
+        }
+        
+        :host iron-icon.amber-star {
+            width: 16px;
+            height: 16px;
+            color: var(--paper-amber-500);
+        }
+        
+        :host iron-icon.grey-star {
+            width: 16px;
+            height: 16px;
+            color: var(--paper-grey-500);
+        }
+        
+        :host .photo {
+            background-position: center center;
+            width: 48px;
+            height: 48px;
+            margin-right: 8px;
+            border: 1px solid #eee;
+        }
+        
+        :host .rating {
+            margin-left: 8px;
+            color: var(--paper-blue-700);
+        }
+        
+        :host .distance {
+            font-size: 14px;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-header {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.4em;
+        }
+        
+        :host .cafe-rating {
+            margin-top: 4px;
+        }
+        
+        :host .cafe-phone {
+            margin-top: 12px;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-address {
+            margin-top: 8px;
+            line-height: 1.2em;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-weekday {
+            margin-top: 8px;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-weekday div {
+            line-height: 1.2em;
+        }
+        
+        :host iron-icon.phone,
+        :host iron-icon.address,
+        :host iron-icon.schedule {
+            min-width: 24px;
+            margin-right: 4px;
+        }
+        
+        :host .favorite {
+            color: var(--paper-red-900);
+        }
+    </style>
+    <template>
+        <paper-fab icon="maps:my-location" on-tap="_locate" aria-label="locate nearby"></paper-fab>
+        <iron-pages selected="{{page}}" attr-for-selected="page">
+            <div class="fit layout vertical center-center" style="background:#fff" page="locate">
+                <paper-spinner active="{{!offline}}" hidden$="{{offline}}"></paper-spinner>
+                <div hidden$="{{!offline}}">
+                    <iron-icon class="offline" icon="device:signal-wifi-off"></iron-icon>
+                    <h1>Offline</h1>
+                </div>
+            </div>
+            <div style="background:#fff" page="nearby">
+                <template is="dom-repeat" items="{{cafes}}" as="cafe">
+                    <paper-item on-tap="_openCafeDialog">
+                        <div class="photo" style$="background-image:url({{cafe.photoUrl}})"></div>
+                        <paper-item-body two-line>
+                            <div class="layout horizontal center">
+                                <div style="font-weight:500">{{cafe.name}}</div>
+                                <div class="flex-auto"></div>
+                                <iron-icon class="favorite" icon="icons:favorite" hidden$="{{!cafe.favorite}}"></iron-icon>
+                            </div>
+                            <div class="layout horizontal center">
+                                <iron-icon class$="{{_ratingStar(cafe.rating, 1)}}" icon="icons:star"></iron-icon>
+                                <iron-icon class$="{{_ratingStar(cafe.rating, 2)}}" icon="icons:star"></iron-icon>
+                                <iron-icon class$="{{_ratingStar(cafe.rating, 3)}}" icon="icons:star"></iron-icon>
+                                <iron-icon class$="{{_ratingStar(cafe.rating, 4)}}" icon="icons:star"></iron-icon>
+                                <iron-icon class$="{{_ratingStar(cafe.rating, 5)}}" icon="icons:star"></iron-icon>
+                                <div class="flex-auto"></div>
+                                <div class="distance">
+                                    <iron-icon style="width:16px;height:16px" icon="maps:near-me"></iron-icon> <span>{{cafe.distance}} M</span>
+                                </div>
+                            </div>
+                        </paper-item-body>
+                    </paper-item>
+                </template>
+            </div>
+        </iron-pages>
+        <paper-dialog id="cafeDialog" with-backdrop on-iron-overlay-closed="_dismissCafeDialog">
+            <paper-dialog-scrollable>
+                <div class="card-content">
+                    <div class="cafe-header">{{chooseCafe.name}}</div>
+                    <div class="cafe-rating layout horizontal center">
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 1)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 2)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 3)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 4)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 5)}}" icon="icons:star"></iron-icon>
+                    </div>
+                    <div class="cafe-phone layout horizontal center">
+                        <iron-icon class="phone" icon="maps:local-phone"></iron-icon>
+                        <a href$="tel://{{chooseCafe.detail.international_phone_number}}">{{chooseCafe.detail.international_phone_number}}</a>
+                    </div>
+                    <div class="cafe-address layout horizontal center">
+                        <iron-icon class="address" icon="maps:place"></iron-icon>
+                        <div>{{chooseCafe.formatted_address}}</div>
+                    </div>
+                    <div class="cafe-weekday layout horizontal start">
+                        <iron-icon class="schedule" icon="icons:schedule"></iron-icon>
+                        <div>
+                            <template is="dom-repeat" items="{{chooseCafe.detail.opening_hours.weekday_text}}">
+                                <div>{{item}}</div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </paper-dialog-scrollable>
+            <div class="buttons">
+                <paper-icon-button class="favorite" icon="icons:favorite" on-tap="_addFavorite" aria-label="add favorite" dialog-confirm></paper-icon-button>
+            </div>
+        </paper-dialog>
+        <google-map map="{{map}}" api-key="" hidden></google-map>
+        <firebase-query id="query" app="{{app}}" path="/users/{{user.uid}}/favorites" data="{{favorites}}"></firebase-query>
+    </template>
+    <script>
+        Polymer({
+
+            is: 'coffee-nearby',
+
+            properties: {
+                app: Object,
+                user: Object,
+                page: String,
+                map: Object,
+                center: Object,
+                cafes: Array,
+                favorites: Array,
+                offline: Boolean,
+                chooseCafe: Object
+            },
+
+            _locate: function() {
+                this.set('page', 'locate');
+                this.set('offline', !window.navigator.onLine);
+
+                if (!this.offline) {
+                    window.navigator.geolocation.getCurrentPosition(function(e) {
+                        this.set('center', {
+                            latitude: e.coords.latitude,
+                            longitude: e.coords.longitude
+                        });
+                        var places = new google.maps.places.PlacesService(this.map);
+                        places.textSearch({
+                            query: 'cafe',
+                            radius: '500',
+                            types: ['cafe', 'food', 'store'],
+                            location: new google.maps.LatLng(this.center.latitude, this.center.longitude)
+                        }, function(results, status) {
+                            if (status == google.maps.places.PlacesServiceStatus.OK) {
+                                var cafes = results.map(function(result) {
+                                    result.photoUrl = result.photos ? result.photos[0].getUrl({
+                                        'maxWidth': 100,
+                                        'maxHeight': 100
+                                    }) : '';
+                                    result.rating = result.rating || 0;
+                                    result.distance = Math.ceil(Math.sqrt(Math.pow(this.center.latitude - result.geometry.location.lat(), 2) + Math.pow(this.center.longitude - result.geometry.location.lng(), 2)) * 111000);
+
+                                    return result;
+                                }.bind(this));
+
+                                cafes.sort(function(x, y) {
+                                    return x.distance - y.distance;
+                                }.bind(this));
+
+                                cafes.forEach(function(cafe) {
+                                    this.favorites.forEach(function(favorite) {
+                                        if (cafe.place_id === favorite.place_id)
+                                            cafe.favorite = true;
+                                    });
+                                }.bind(this));
+
+                                this.set('cafes', cafes);
+                                this.set('page', 'nearby');
+                            }
+                        }.bind(this));
+                    }.bind(this));
+                }
+            },
+
+            _ratingStar: function(rating, star) {
+                return rating >= star ? 'amber-star' : 'grey-star';
+            },
+
+            _openCafeDialog: function(e) {
+                this.focusedElementBeforeModal = e.target;
+                this.set('offline', !window.navigator.onLine);
+
+                if (!this.offline) {
+                    if (!e.model.cafe.detail) {
+                        var places = new google.maps.places.PlacesService(this.map);
+                        places.getDetails({
+                            placeId: e.model.cafe.place_id
+                        }, function(place, status) {
+                            if (status == google.maps.places.PlacesServiceStatus.OK) {
+                                this.set(['cafes.', e.model.index, '.detail'].join(''), place);
+                                this.set('chooseCafe', this.cafes[e.model.index]);
+                                this.$.cafeDialog.open();
+                            }
+                        }.bind(this));
+                    } else {
+                        this.set('chooseCafe', e.model.cafe);
+                        this.$.cafeDialog.open();
+                    }
+                }
+                else
+                    this.set('page', 'locate');
+            },
+
+            _dismissCafeDialog: function(e) {
+                if (e.detail.confirmed) {
+                    this.cafes.forEach(function(cafe, idx) {
+                        if (cafe.place_id === this.chooseCafe.place_id)
+                            this.set(['cafes.', idx, '.favorite'].join(''), true);
+                    }.bind(this));
+                }
+
+                this.focusedElementBeforeModal.focus();
+            },
+
+            _addFavorite: function(e) {
+                var item = {
+                    place_id: this.chooseCafe.place_id,
+                    name: this.chooseCafe.name,
+                    rating: this.chooseCafe.rating,
+                    phone_number: this.chooseCafe.detail.international_phone_number,
+                    address: this.chooseCafe.formatted_address,
+                    weekday_text: this.chooseCafe.detail.opening_hours.weekday_text,
+                    photo_url: this.chooseCafe.photoUrl
+                }, favorite;
+
+                this.favorites.forEach(function(item) {
+                    if (item.place_id === this.chooseCafe.place_id)
+                        favorite = item;
+                }.bind(this));
+
+                if (favorite) {
+                    this.$.query.setStoredValue(['/users/', this.user.uid, '/favorites/', favorite.$key].join(''), item);
+                } else {
+                    var cafe = document.createElement('firebase-document');
+                    cafe.data = item;
+                    cafe.save(['/users/', this.user.uid, '/favorites'].join(''));
+                }
+            }
+        });
+    </script>
+</dom-module>

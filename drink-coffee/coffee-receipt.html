@@ -1,0 +1,162 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icons/editor-icons.html">
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="../paper-fab/paper-fab.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../paper-item/paper-item-body.html">
+<link rel="import" href="../polymerfire/firebase-query.html">
+<link rel="import" href="../polymerfire/firebase-document.html">
+<link rel="import" href="../moment-element/moment-with-locales-import.html">
+<!--
+`coffee-receipt`
+@demo demo/coffee-receipt.html 
+-->
+<dom-module id="coffee-receipt">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+        :host {
+            display: block;
+            position: relative;
+            box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            height: 100%;
+        }
+        
+        :host paper-item {
+            border-top: 1px solid #eee;
+            padding: 4px 16px;
+        }
+        
+        :host paper-item:hover {
+            background-color: rgba(0, 0, 0, .037);
+            cursor: pointer;
+        }
+        
+        :host paper-fab {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 1;
+        }
+        
+        :host .price {
+            margin-left: 8px;
+            color: var(--paper-red-900);
+            font-size: 22px;
+        }
+        
+        :host .memo {
+            color: var(--secondary-text-color);
+            font-size: 14px;
+            margin-right: 8px;
+            line-height: 1.4em;
+            margin-top: 4px;
+        }
+        
+        :host .timestamp {
+            color: var(--secondary-text-color);
+            font-size: 14px;
+            line-height: 1.4em;
+        }
+    </style>
+    <template>
+        <paper-fab icon="icons:add" on-tap="_openReceiptDialog" aria-label="add receipt"></paper-fab>
+        <div style="background:#fff">
+            <template is="dom-repeat" items="{{receipts}}" as="receipt">
+                <paper-item on-tap="_openReceiptDialog">
+                    <paper-item-body two-line>
+                        <div style="font-weight:500">{{receipt.name}}</div>
+                        <div class="memo">{{receipt.memo}}</div>
+                        <div class="timestamp">{{_format(receipt.timestamp)}}</div>
+                    </paper-item-body>
+                    <div class="price layout horizontal center">
+                        <iron-icon icon="editor:attach-money"></iron-icon>
+                        <div>{{receipt.price}}</div>
+                    </div>
+                </paper-item>
+            </template>
+        </div>
+        <paper-dialog id="receiptDialog" with-backdrop on-iron-overlay-closed="_dismissReceiptDialog">
+            <paper-dialog-scrollable>
+                <paper-input class="flex-auto" label="Name" value="{{chooseReceipt.name}}" list="favoriteList" autocomplete autofocus auto-validate error-message="Name required!" required></paper-input>
+                <paper-input class="flex-auto" label="Price" value="{{chooseReceipt.price}}" type="number"></paper-input>
+                <paper-input class="flex-auto" label="Memo" value="{{chooseReceipt.memo}}"></paper-input>
+            </paper-dialog-scrollable>
+            <div class="buttons">
+                <paper-icon-button icon="icons:delete" aria-label="delete receipt" dialog-dismiss on-tap="_deleteReceipt" hidden$="{{!chooseReceipt.$key}}"></paper-icon-button>
+                <paper-icon-button icon="icons:save" aria-label="save receipt" dialog-confirm></paper-icon-button>
+            </div>
+        </paper-dialog>
+        <firebase-query id="query" app="{{app}}" path="/users/[[user.uid]]/receipts" data="{{receipts}}"></firebase-query>
+        <firebase-query app="{{app}}" path="/users/[[user.uid]]/favorites" data="{{favorites}}"></firebase-query>
+        <datalist id="favoriteList">
+            <template is="dom-repeat" items="{{favorites}}">
+                <option value="{{item.name}}"></option>
+            </template>
+        </datalist>
+    </template>
+    <script>
+        Polymer({
+
+            is: 'coffee-receipt',
+
+            properties: {
+                app: Object,
+                user: Object,
+                receipts: Array,
+                favorites: Array,
+                chooseReceipt: Object
+            },
+
+            _format: function(value) {
+                return moment(value).format('DD/MM/YYYY HH:mm');
+            },
+
+            _openReceiptDialog: function(e) {
+                this.focusedElementBeforeModal = e.target;
+
+                if (e.model && e.model.receipt)
+                    this.set('chooseReceipt', e.model.receipt);
+                else
+                    this.set('chooseReceipt', {
+                        name: '',
+                        price: 0,
+                        memo: ''
+                    });
+
+                this.$.receiptDialog.open();
+            },
+
+            _dismissReceiptDialog: function(e) {
+                if (e.detail.confirmed) {
+                    if (this.chooseReceipt.$key) {
+                        var item = {
+                            name: this.chooseReceipt.name,
+                            price: this.chooseReceipt.price,
+                            memo: this.chooseReceipt.memo,
+                            timestamp: Date.now()
+                        }
+                        this.$.query.setStoredValue(['/users/', this.user.uid, '/receipts/', this.chooseReceipt.$key].join(''), item);
+                    } else {
+                        this.chooseReceipt.timestamp = Date.now();
+                        var cafe = document.createElement('firebase-document');
+                        cafe.data = this.chooseReceipt;
+                        cafe.save(['/users/', this.user.uid, '/receipts'].join(''));
+                    }
+                }
+
+                this.focusedElementBeforeModal.focus();
+            },
+
+            _deleteReceipt: function(e) {
+                var cafe = document.createElement('firebase-document');
+                cafe.setStoredValue(['/users/', this.user.uid, '/receipts/', this.chooseReceipt.$key].join(''), null);
+            }
+        });
+    </script>
+</dom-module>

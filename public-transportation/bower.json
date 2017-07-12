@@ -1,0 +1,30 @@
+{
+  "name": "public-transportation",
+  "version": "1.0.0",
+  "description": "",
+  "authors": [
+    "Marx Tseng <marx.zeng@gmail.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/MarxTseng/public-transportation.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.4.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^1.3.1",
+    "iron-icons": "PolymerElements/iron-icons#^1.1.3",
+    "paper-dropdown-menu": "PolymerElements/paper-dropdown-menu#^1.3.2",
+    "paper-header-panel": "PolymerElements/paper-header-panel#^1.1.6",
+    "paper-input": "PolymerElements/paper-input#^1.1.17",
+    "paper-item": "PolymerElements/paper-item#^1.2.1",
+    "paper-menu": "PolymerElements/paper-menu#^1.2.2",
+    "paper-toolbar": "PolymerElements/paper-toolbar#^1.1.6",
+    "moment-element": "^0.4.1"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^1.0.0",
+    "web-component-tester": "^4.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0"
+  }
+}

@@ -1,0 +1,180 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../paper-datatable/paper-datatable.html">
+<link rel="import" href="../paper-datatable/paper-datatable-column.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../moment-element/moment-with-locales-import.html">
+<!--
+`view-issues`
+@demo demo/view-issues.html 
+-->
+<dom-module id="view-issues">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+    :host {
+        display: block;
+        position: relative;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        height: 100%;
+        --primary-color: var(--paper-purple-700);
+        --default-primary-color: var(--paper-purple-700);
+        --light-primary-color: var(--paper-purple-100);
+        --dark-primary-color: var(--paper-purple-900);
+    }
+    
+    :host .open {
+        color: var(--paper-blue-700);
+    }
+    
+    :host .close {
+        color: var(--paper-red-700);
+    }
+    
+    :host paper-input {
+        margin: 0 8px;
+        flex: 1 1 120px;
+    }
+    </style>
+    <template>
+        <div class="layout horizontal center wrap" style="padding:8px">
+            <paper-input label="Employee" value="{{filter.employee}}" list="employeeList" autocomplete></paper-input>
+            <paper-input label="Customer" value="{{filter.customer}}" list="customerList" autocomplete></paper-input>
+            <paper-input label="Status" value="{{filter.status}}" list="statusList" autocomplete></paper-input>
+            <paper-input label="Refresh Time" type="number" min="5" max="30" value="{{refreshTime}}"></paper-input>
+        </div>
+        <paper-datatable data="{{data}}">
+            <paper-datatable-column header="ID" property="id" sortable></paper-datatable-column>
+            <paper-datatable-column header="Description" property="description"></paper-datatable-column>
+            <paper-datatable-column header="Customer" property="customer" sortable></paper-datatable-column>
+            <paper-datatable-column header="Customer Email" property="customer_email" sortable></paper-datatable-column>
+            <paper-datatable-column header="Submission Time" property="submission_time" sortable></paper-datatable-column>
+            <paper-datatable-column header="Closed Time" property="closed_time" sortable></paper-datatable-column>
+            <paper-datatable-column header="Status" property="status" sortable>
+                <template>
+                    <div class="open" hidden$="{{!item.iconStatus}}">
+                        <iron-icon icon="icons:lock-open"></iron-icon>
+                        <span>Open</span>
+                    </div>
+                    <div class="close" hidden$="{{item.iconStatus}}">
+                        <iron-icon icon="icons:lock-outline"></iron-icon>
+                        <span>Close</span>
+                    </div>
+                </template>
+            </paper-datatable-column>
+        </paper-datatable>
+        <datalist id="employeeList">
+            <option value="Oliver">Oliver</option>
+            <option value="Penny">Penny</option>
+            <option value="Edward">Edward</option>
+            <option value="Adam">Adam</option>
+            <option value="Ann">Ann</option>
+        </datalist>
+        <datalist id="customerList">
+            <option value="Marx">Marx</option>
+            <option value="Ytin">Ytin</option>
+            <option value="Bill">Bill</option>
+            <option value="Kevin">Kevin</option>
+            <option value="Zoe">Zoe</option>
+        </datalist>
+        <datalist id="statusList">
+            <option value="Open">Open</option>
+            <option value="Close">Close</option>
+        </datalist>
+    </template>
+    <script>
+    Polymer({
+
+        is: 'view-issues',
+
+        properties: {
+            data: Array,
+            filter: {
+                type: Object,
+                value: {
+                    employee: null,
+                    customer: null,
+                    status: null
+                }
+            },
+            activePage: {
+                type: Boolean,
+                observer: '_activePageChanged'
+            },
+            refreshTime: {
+                type: Number,
+                value: 5
+            }
+        },
+
+        observers: [
+            '_filter(filter.*)'
+        ],
+
+        _activePageChanged: function(newValue, oldValue) {
+            if (newValue) {
+                this._loadData();
+            } else {
+                clearTimeout(this.timer);
+            }
+        },
+
+        ready: function() {
+            this.reloadCount = 0;
+        },
+
+        _loadData: function() {
+            this.set('filter', {
+                employee: null,
+                customer: null,
+                status: null
+            });
+
+            var file = ['issues_', this.reloadCount % 5, '.json'].join('');
+            fetch(file).then(function(response) {
+                response.json().then(function(data) {
+                    data.forEach(function(item) {
+                        item.submission_time = moment(item.submission_timestamp).format('YYYY/MM/DD HH:mm');
+                        if (item.closed_timestamp !== '')
+                            item.closed_time = moment(item.closed_timestamp).format('YYYY/MM/DD HH:mm');
+                        item.iconStatus = item.status === 'Open';
+                    });
+
+                    this.set('data', [].concat(data));
+                    this.origin = [].concat(data);
+
+                    this.timer = setTimeout(function() {
+                        this.reloadCount += 1;
+                        this._loadData();
+                    }.bind(this), this.refreshTime * 1000);
+                }.bind(this));
+            }.bind(this));
+        },
+
+        _filter: function() {
+            if (!this.origin) return;
+
+            var data = [];
+            this.origin.forEach(function(item, idx) {
+                var employee = true;
+                if (this.filter.employee)
+                    employee = item.employee === this.filter.employee;
+
+                var customer = true;
+                if (this.filter.customer)
+                    customer = item.customer === this.filter.customer;
+
+                var status = true;
+                if (this.filter.status)
+                    status = item.status === this.filter.status;
+
+                if (employee && customer && status)
+                    data.push(item);
+            }.bind(this));
+
+            this.set('data', [].concat(data));
+        }
+    });
+    </script>
+</dom-module>

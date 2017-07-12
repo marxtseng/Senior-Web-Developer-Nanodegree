@@ -1,0 +1,21 @@
+{
+    "name": "drink-coffee",
+    "version": "1.0.0",
+    "description": "",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Marx Tseng <marx.zeng@gmail.com>",
+    "license": "ISC",
+    "devDependencies": {
+        "gulp": "^3.9.1",
+        "gulp-clean": "^0.3.2",
+        "gulp-connect": "^5.0.0",
+        "gulp-crisper": "^1.1.0",
+        "gulp-minify-inline": "^0.2.1",
+        "gulp-replace": "^0.5.4",
+        "gulp-shell": "^0.5.2",
+        "gulp-vulcanize": "^6.1.0",
+        "os": "^0.1.1"
+    }
+}

@@ -1,0 +1,191 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../paper-item/paper-item-body.html">
+<link rel="import" href="../polymerfire/firebase-query.html">
+<link rel="import" href="../polymerfire/firebase-document.html">
+<!--
+`coffee-favorite`
+@demo demo/coffee-favorite.html 
+-->
+<dom-module id="coffee-favorite">
+    <style include="iron-flex iron-flex-alignment iron-flex-factors iron-positioning"></style>
+    <style>
+        :host {
+            display: block;
+            position: relative;
+            box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            height: 100%;
+        }
+        
+        :host paper-item {
+            border-top: 1px solid #eee;
+        }
+
+        :host paper-item:hover {
+            background-color: rgba(0, 0, 0, .037);
+            cursor: pointer;
+        }
+        
+        :host iron-icon.amber-star {
+            width: 16px;
+            height: 16px;
+            color: var(--paper-amber-500);
+        }
+        
+        :host iron-icon.grey-star {
+            width: 16px;
+            height: 16px;
+            color: var(--paper-grey-500);
+        }
+
+        :host .photo {
+            background-position: center center;
+            width: 48px;
+            height: 48px;
+            margin-right: 8px;
+            border: 1px solid #eee;
+        }
+        
+        :host .rating {
+            margin-left: 8px;
+            color: var(--paper-blue-700);
+        }
+        
+        :host .distance {
+            font-size: 14px;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-header {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.4em;
+        }
+        
+        :host .cafe-rating {
+            margin-top: 4px;
+        }
+        
+        :host .cafe-phone {
+            margin-top: 12px;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-address {
+            margin-top: 8px;
+            line-height: 1.2em;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-weekday {
+            margin-top: 8px;
+            color: var(--paper-grey-600);
+        }
+        
+        :host .cafe-weekday div {
+            line-height: 1.2em;
+        }
+
+        :host iron-icon.phone,
+        :host iron-icon.address,
+        :host iron-icon.schedule {
+            min-width: 24px;
+            margin-right: 4px;
+        }
+
+        :host .remove {
+            color: var(--paper-red-900);
+        }
+    </style>
+    <template>
+        <div style="background:#fff">
+            <template is="dom-repeat" items="{{favorites}}" as="cafe">
+                <paper-item on-tap="_openCafeDialog">
+                    <div class="photo" style$="background-image:url({{cafe.photo_url}})"></div>
+                    <paper-item-body two-line>
+                        <div style="font-weight:500">{{cafe.name}}</div>
+                        <div class="layout horizontal center" style="height:24px">
+                            <iron-icon class$="{{_ratingStar(cafe.rating, 1)}}" icon="icons:star"></iron-icon>
+                            <iron-icon class$="{{_ratingStar(cafe.rating, 2)}}" icon="icons:star"></iron-icon>
+                            <iron-icon class$="{{_ratingStar(cafe.rating, 3)}}" icon="icons:star"></iron-icon>
+                            <iron-icon class$="{{_ratingStar(cafe.rating, 4)}}" icon="icons:star"></iron-icon>
+                            <iron-icon class$="{{_ratingStar(cafe.rating, 5)}}" icon="icons:star"></iron-icon>
+                        </div>
+                    </paper-item-body>
+                </paper-item>
+            </template>
+        </div>
+        <paper-dialog id="cafeDialog" with-backdrop on-iron-overlay-closed="_dismissCafeDialog">
+            <paper-dialog-scrollable>
+                <div class="card-content">
+                    <div class="cafe-header">{{chooseCafe.name}}</div>
+                    <div class="cafe-rating layout horizontal center">
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 1)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 2)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 3)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 4)}}" icon="icons:star"></iron-icon>
+                        <iron-icon class$="{{_ratingStar(chooseCafe.rating, 5)}}" icon="icons:star"></iron-icon>
+                    </div>
+                    <div class="cafe-phone layout horizontal center">
+                        <iron-icon class="phone" icon="maps:local-phone"></iron-icon>
+                        <a href$="tel://{{chooseCafe.phone_number}}">{{chooseCafe.phone_number}}</a>
+                    </div>
+                    <div class="cafe-address layout horizontal center">
+                        <iron-icon class="address" icon="maps:place"></iron-icon>
+                        <div>{{chooseCafe.address}}</div>
+                    </div>
+                    <div class="cafe-weekday layout horizontal start">
+                        <iron-icon class="schedule" icon="icons:schedule"></iron-icon>
+                        <div>
+                            <template is="dom-repeat" items="{{chooseCafe.weekday_text}}">
+                                <div>{{item}}</div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </paper-dialog-scrollable>
+            <div class="buttons">
+                <paper-icon-button class="remove" icon="icons:delete" on-tap="_removeFavorite" aria-label="remove favorite" dialog-dismiss></paper-icon-button>
+            </div>
+        </paper-dialog>
+        <firebase-query id="query" app="{{app}}" path="/users/[[user.uid]]/favorites" data="{{favorites}}"></firebase-query>
+    </template>
+    <script>
+        Polymer({
+
+            is: 'coffee-favorite',
+
+            properties: {
+                app: Object,
+                user: Object,
+                favorites: Array,
+                chooseCafe: Object
+            },
+
+            _ratingStar: function(rating, star) {
+                return rating >= star ? 'amber-star' : 'grey-star';
+            },
+
+            _openCafeDialog: function(e) {
+                this.focusedElementBeforeModal = e.target;
+                this.set('chooseCafe', e.model.cafe);
+                this.$.cafeDialog.open();
+            },
+
+            _dismissCafeDialog: function() {
+                this.focusedElementBeforeModal.focus();
+            },
+
+            _removeFavorite: function(e) {
+                var cafe = document.createElement('firebase-document');
+                cafe.setStoredValue(['/users/', this.user.uid, '/favorites/', this.chooseCafe.$key].join(''), null);
+            }
+        });
+    </script>
+</dom-module>
